@@ -1,0 +1,15 @@
+
+def local_coords_getter(query_lon, query_lat, lon_anchor, lat_anchor, azimuth):
+    tr = pyproj.Geod(ellps='GRS80')
+    az12, _, dist = tr.inv(np.full_like(query_lon, lon_anchor), np.full_like(query_lat, lat_anchor),
+                                    query_lon, query_lat)
+    x_rotated = dist * np.sin(np.deg2rad(az12))
+    y_rotated = dist * np.cos(np.deg2rad(az12))
+
+    rad_az = np.deg2rad(azimuth)
+    x_local = (x_rotated * np.cos(rad_az) - y_rotated * np.sin(rad_az))
+    y_local = (x_rotated * np.sin(rad_az) + y_rotated * np.cos(rad_az))
+
+    return x_local, y_local
+
+
