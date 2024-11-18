@@ -1,8 +1,6 @@
 ##
-#  @file common.py
-#  @brief Common definitions and functions for all the UCVM plotting scripts.
-#  @author David Gill - SCEC <davidgil@usc.edu>
-#  @version 14.7.0
+#  @file cvm_ucvm.py
+#  @brief Common definitions and functions for UCVM plotting
 #
 #  Provides common definitions and functions that are shared amongst all UCVM
 #  plotting scripts. Facilitates easier multi-processing as well.
@@ -17,13 +15,6 @@ import struct
 import getopt
 import json
 
-#  Numpy is required.
-try:
-    import numpy as np
-except:
-    print("ERROR: NumPy must be installed on your system in order to generate these plots.")
-    exit(1)
-    
 ## Constant for all material properties.
 ALL_PROPERTIES = ["vp", "vs", "density"]
 ## Constant for just Vs.

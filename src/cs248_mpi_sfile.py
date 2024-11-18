@@ -6,14 +6,12 @@
 
 import h5py
 import numpy as np
-import pyproj
-import xarray as xr
 from cvm_ucvm import UCVM, Point
+from cvm_hdf5 import coord_system_array
 import os
 import datetime
 
 from mpi4py import MPI
-import h5py
 
 mycomm = MPI.COMM_WORLD    # Use the world communicator
 myrank = mycomm.Get_rank() # The process ID (integer 0-41 for a 42-process job)
@@ -57,43 +55,6 @@ def create_h5file(azimuth, lon_anchor, lat_anchor, filename, blocks_info, n_comp
         h5_file['Z_interfaces'][f'z_values_{i + 1}'][:, :] = blocks_info['z_bot'][i]
 
     h5_file.close()
-
-
-def coord_system_array(length, width, dx, dy, azimuth, lon_anchor, lat_anchor):
-        coords_strike_axis = np.linspace(0, length, length // dx + 1)
-        coords_dip_axis = np.linspace(0, width, width // dy + 1)
-
-        coordinates_array = xr.DataArray(np.zeros((coords_strike_axis.size, coords_dip_axis.size, 6)),
-                                         dims=('x_axis', 'y_axis', 'parameter'),
-                                         coords={'x_axis': coords_strike_axis,
-                                                 'y_axis': coords_dip_axis,
-                                                 'parameter': ['local_strike', 'local_dip', 'rotated_strike',
-                                                               'rotated_dip', 'lon', 'lat']})
-
-        coordinates_array.loc[:, :, 'local_strike'] = np.array(
-            [coords_strike_axis for _ in range(coords_dip_axis.size)]).T
-        coordinates_array.loc[:, :, 'local_dip'] = np.array([coords_dip_axis for _ in range(coords_strike_axis.size)])
-
-        rad_az = np.deg2rad(azimuth)
-        coordinates_array.loc[:, :, 'rotated_strike'] = (coordinates_array.loc[:, :, 'local_strike'] * np.cos(rad_az) -
-                                                         coordinates_array.loc[:, :, 'local_dip'] * np.sin(rad_az))
-        coordinates_array.loc[:, :, 'rotated_dip'] = (coordinates_array.loc[:, :, 'local_strike'] * np.sin(rad_az) +
-                                                      coordinates_array.loc[:, :, 'local_dip'] * np.cos(rad_az))
-
-        dist = np.sqrt(coordinates_array.loc[:, :, 'rotated_strike'].values ** 2 + coordinates_array.loc[:, :,
-                                                                                   'rotated_dip'].values ** 2)
-        az12 = np.rad2deg(np.arctan2(coordinates_array.loc[:, :, 'rotated_dip'].values,
-                                     coordinates_array.loc[:, :, 'rotated_strike'].values + 0.0000001))
-
-        # GRS80 is the ellipsoid used by NAD83
-        tr = pyproj.Geod(ellps='GRS80')
-        endlon, endlat, backaz = tr.fwd(np.full_like(coordinates_array.loc[:, :, 'rotated_strike'].values, lon_anchor),
-                                        np.full_like(coordinates_array.loc[:, :, 'rotated_dip'].values, lat_anchor),
-                                        az12, dist)
-        coordinates_array.loc[:, :, 'lon'] = endlon
-        coordinates_array.loc[:, :, 'lat'] = endlat
-
-        return coordinates_array
 
 
 def block_info(n_blocks, length, width):
