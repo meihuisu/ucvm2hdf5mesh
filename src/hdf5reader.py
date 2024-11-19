@@ -9,6 +9,8 @@ import os
 import numpy as np
 from cvm_ucvm import UCVM, Point
 from cvm_hdf5 import coord_system_array, local_coords_getter
+import  pdb
+import math
 
 
 #  rank: 2584  grid: grid_0  ii> 2584  iii> 0  with  21  latlon
@@ -16,17 +18,30 @@ from cvm_hdf5 import coord_system_array, local_coords_getter
 def test_target_point(h5_file,shapes):
     query_lon=-120.8320
     query_lat=37.2769
-    test_point(h5_file, shapes, query_lon, query_lat)
+    test_point(0,h5_file, shapes, query_lon, query_lat)
 
 #(-122.04519,37.4161)
 def test_s3240_point(h5_file,shapes):
     query_lon=-122.04519
     query_lat=37.4161
-    test_point(h5_file, shapes, query_lon, query_lat)
+    test_point_grid(0, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(1, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(2, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(3, h5_file, shapes, query_lon, query_lat)
+
+#(-121.4332,38.1729)
+def test_other_point(h5_file,shapes):
+    query_lon= -121.4332
+    query_lat=38.1729
+    test_point_grid(0, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(1, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(2, h5_file, shapes, query_lon, query_lat)
+    test_point_grid(3, h5_file, shapes, query_lon, query_lat)
+
 
 #  rank: 2584  grid: grid_0  ii> 2584  iii> 0  with  21  latlon
 #(-120.8320, 37.2769, 0.0000)
-def test_point(h5_file, shapes, query_lon, query_lat):
+def test_point_grid(grid_id,h5_file, shapes, query_lon, query_lat):
     top= h5_file['/']
     lon_anchor, lat_anchor, azimuth = top.attrs['Origin longitude, latitude, azimuth']
     print("lon_anchor>>>",lon_anchor)
@@ -35,10 +50,28 @@ def test_point(h5_file, shapes, query_lon, query_lat):
     print("query_lon>>>",query_lon)
     print("query_lat>>>",query_lat)
 
+    if grid_id == 0:
+      z_start =0
+      z_end=500
+      z_step=25
+    if grid_id == 1:
+      z_start = 500
+      z_end=3500
+      z_step=50
+    if grid_id == 2:
+      z_start = 3500
+      z_end= 10000
+      z_step=125
+    if grid_id == 3:
+      z_start = 10000
+      z_end= 30000
+      z_step=250
+
 ## try grid_0
-    grid="grid_0"
+    grid="grid_%d"%(grid_id)
     length, width = 280000, 140000
-    nx,ny,nz=shapes[0]
+    nx,ny,nz=shapes[grid_id]
+    print(nx,",",ny,",",nz)
     dx, dy = length // (nx - 1), width // (ny - 1)
 
     x_coord, y_coord=local_coords_getter(query_lon, query_lat, lon_anchor, lat_anchor, azimuth)
@@ -49,12 +82,32 @@ def test_point(h5_file, shapes, query_lon, query_lat):
     print("target_x_idx>>>",target_x_idx)
     print("target_y_idx>>>",target_y_idx)
 
-    matprop_vs=h5_file['Material_model'][grid]['Cs'][target_x_idx, target_y_idx, 0]
-    matprop_vp=h5_file['Material_model'][grid]['Cp'][target_x_idx, target_y_idx, 0]
-    matprop_density=h5_file['Material_model'][grid]['Rho'][target_x_idx, target_y_idx, 0]
-    print("matprop_vs>>>", matprop_vs)
-    print("matprop_vp>>>", matprop_vp)
-    print("matprop_density>>>", matprop_density)
+#for first block,
+    zcnt=(z_end-z_start / z_step )+1
+    print("number of z steps", zcnt)
+    print("nz is ", nz)
+    for i in range(nz):
+       matprop_vs=h5_file['Material_model'][grid]['Cs'][target_x_idx, target_y_idx, i]
+       matprop_vp=h5_file['Material_model'][grid]['Cp'][target_x_idx, target_y_idx, i]
+       matprop_density=h5_file['Material_model'][grid]['Rho'][target_x_idx, target_y_idx, i]
+       print(i,"XXX", z_start+i*z_step,",", matprop_vp, ",", matprop_vs, ",", matprop_density)
+ 
+    jcnt= math.ceil((z_end - z_start) / 80 )
+    print("number of j steps ", jcnt)
+    for j in range(jcnt) :
+       print("bare",(j * 80) / z_step)
+       zidx=math.ceil((j * 80) / z_step)
+       matprop_vs=h5_file['Material_model'][grid]['Cs'][target_x_idx, target_y_idx, zidx]
+       matprop_vp=h5_file['Material_model'][grid]['Cp'][target_x_idx, target_y_idx, zidx]
+       matprop_density=h5_file['Material_model'][grid]['Rho'][target_x_idx, target_y_idx, zidx]
+       print(zidx,"YYYY", z_start+j*80,",", matprop_vp, ",", matprop_vs, ",", matprop_density)
+
+#    matprop_vs=h5_file['Material_model'][grid]['Cs'][target_x_idx, target_y_idx, 0]
+#    matprop_vp=h5_file['Material_model'][grid]['Cp'][target_x_idx, target_y_idx, 0]
+#    matprop_density=h5_file['Material_model'][grid]['Rho'][target_x_idx, target_y_idx, 0]
+#    print("matprop_vs>>>", matprop_vs)
+#    print("matprop_vp>>>", matprop_vp)
+#    print("matprop_density>>>", matprop_density)
 
 
 def read_h5file(filename) :
@@ -126,10 +179,11 @@ if __name__ == '__main__':
         installdir = os.environ.get('UCVM_INSTALL_PATH')
     ucvm_model = UCVM(install_dir=installdir)
 
-    print("\n...LOOKING at s3240")
-    test_s3240_point(handle,shapes)
-    print("\n...LOOKING at target")
-    test_target_point(handle,shapes)
+    test_other_point(handle,shapes)
+#    print("\n...LOOKING at s3240")
+#    test_s3240_point(handle,shapes)
+#    print("\n...LOOKING at target")
+#    test_target_point(handle,shapes)
 
     handle.close()
 
