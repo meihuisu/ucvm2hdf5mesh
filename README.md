@@ -22,10 +22,11 @@ module list,
 
 Using conda env to setup running environment
 
-<pre></pre>
-needs to load python version of hdf5  
+needs to load python version of hdf5 
+<pre>
+    
   hdf5py
-needs to load python --..
+
 </pre>
 
-
+needs to load python --..
